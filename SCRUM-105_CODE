@@ -1,0 +1,430 @@
+
+import sys
+import sqlite3
+from PySide6.QtWidgets import (
+    QApplication, QWidget, QVBoxLayout, QHBoxLayout,
+    QPushButton, QLabel, QLineEdit, QComboBox,
+    QTableWidget, QTableWidgetItem, QHeaderView,
+    QDialog, QFormLayout, QSpinBox, QDoubleSpinBox,
+    QMessageBox, QAbstractItemView
+)
+from PySide6.QtCore import Qt
+
+DB_NAME = "loader_store.db"
+
+STYLE = """
+QWidget {
+    background-color: #1b1b1b;
+    color: white;
+    font-family: 'Segoe UI';
+    font-size: 13px;
+}
+QLineEdit, QComboBox, QSpinBox, QDoubleSpinBox {
+    background: #292929;
+    border: 1px solid #444;
+    border-radius: 6px;
+    padding: 8px;
+}
+QPushButton {
+    background: #ffb900;
+    color: black;
+    border: none;
+    border-radius: 6px;
+    padding: 9px 14px;
+    font-weight: bold;
+}
+QPushButton:hover {
+    background: #ffd15c;
+}
+QTableWidget {
+    background: #252525;
+    alternate-background-color: #2c2c2c;
+    gridline-color: #393939;
+    border: none;
+}
+QHeaderView::section {
+    background: #171717;
+    color: #cccccc;
+    padding: 10px;
+    border: none;
+}
+QTableWidget::item {
+    padding: 7px;
+}
+"""
+
+
+class InventoryDatabase:
+    def __init__(self):
+        self.conn = sqlite3.connect(DB_NAME)
+        self.conn.execute("""
+            CREATE TABLE IF NOT EXISTS products (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                code TEXT NOT NULL UNIQUE,
+                name TEXT NOT NULL,
+                category TEXT NOT NULL,
+                quantity INTEGER NOT NULL DEFAULT 0,
+                min_stock INTEGER NOT NULL DEFAULT 5,
+                cost REAL NOT NULL DEFAULT 0,
+                price REAL NOT NULL DEFAULT 0
+            )
+        """)
+        self.conn.commit()
+
+    def get_products(self):
+        return self.conn.execute(
+            "SELECT * FROM products ORDER BY id"
+        ).fetchall()
+
+    def add_product(self, values):
+        with self.conn:
+            self.conn.execute("""
+                INSERT INTO products
+                (code, name, category, quantity,
+                 min_stock, cost, price)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, values)
+
+    def update_product(self, product_id, values):
+        with self.conn:
+            self.conn.execute("""
+                UPDATE products SET
+                    code=?, name=?, category=?,
+                    quantity=?, min_stock=?,
+                    cost=?, price=?
+                WHERE id=?
+            """, (*values, product_id))
+
+    def delete_product(self, product_id):
+        with self.conn:
+            self.conn.execute(
+                "DELETE FROM products WHERE id=?",
+                (product_id,)
+            )
+
+
+class ProductDialog(QDialog):
+    def __init__(self, parent=None, product=None):
+        super().__init__(parent)
+        self.setWindowTitle(
+            "تعديل صنف" if product else "إضافة صنف"
+        )
+        self.setMinimumWidth(400)
+
+        layout = QFormLayout(self)
+
+        self.code = QLineEdit()
+        self.name = QLineEdit()
+        self.category = QComboBox()
+        self.category.setEditable(True)
+        self.category.addItems([
+            "فلاتر", "هيدروليك", "فرامل",
+            "تبريد", "جرافات", "أخرى"
+        ])
+
+        self.quantity = QSpinBox()
+        self.quantity.setMaximum(1000000)
+
+        self.min_stock = QSpinBox()
+        self.min_stock.setMaximum(1000000)
+        self.min_stock.setValue(5)
+
+        self.cost = QDoubleSpinBox()
+        self.cost.setMaximum(100000000)
+        self.cost.setDecimals(2)
+
+        self.price = QDoubleSpinBox()
+        self.price.setMaximum(100000000)
+        self.price.setDecimals(2)
+
+        fields = [
+            ("الكود", self.code),
+            ("اسم الصنف", self.name),
+            ("التصنيف", self.category),
+            ("الكمية", self.quantity),
+            ("الحد الأدنى", self.min_stock),
+            ("التكلفة", self.cost),
+            ("سعر البيع", self.price)
+        ]
+
+        for label, widget in fields:
+            layout.addRow(label, widget)
+
+        if product:
+            self.code.setText(product[1])
+            self.name.setText(product[2])
+            self.category.setCurrentText(product[3])
+            self.quantity.setValue(product[4])
+            self.min_stock.setValue(product[5])
+            self.cost.setValue(product[6])
+            self.price.setValue(product[7])
+
+        save_button = QPushButton("حفظ الصنف")
+        save_button.clicked.connect(self.validate)
+        layout.addRow(save_button)
+
+    def validate(self):
+        if not self.code.text().strip():
+            QMessageBox.warning(self, "خطأ", "أدخل كود الصنف")
+            return
+
+        if not self.name.text().strip():
+            QMessageBox.warning(self, "خطأ", "أدخل اسم الصنف")
+            return
+
+        self.accept()
+
+    def values(self):
+        return (
+            self.code.text().strip(),
+            self.name.text().strip(),
+            self.category.currentText().strip(),
+            self.quantity.value(),
+            self.min_stock.value(),
+            self.cost.value(),
+            self.price.value()
+        )
+
+
+class InventoryPage(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.db = InventoryDatabase()
+        self.setWindowTitle("Loader Store - Inventory")
+        self.resize(1400, 800)
+        self.setStyleSheet(STYLE)
+        self.setup_ui()
+        self.load_products()
+
+    def setup_ui(self):
+        main = QVBoxLayout(self)
+        main.setSpacing(15)
+        main.setContentsMargins(20, 20, 20, 20)
+
+        title = QLabel("المخزون")
+        title.setAlignment(Qt.AlignRight)
+        title.setStyleSheet(
+            "font-size: 24px; font-weight: bold;"
+        )
+        main.addWidget(title)
+
+        toolbar = QHBoxLayout()
+
+        self.add_button = QPushButton("+ إضافة صنف")
+        self.add_button.clicked.connect(self.add_product)
+
+        self.edit_button = QPushButton("تعديل")
+        self.edit_button.clicked.connect(self.edit_product)
+
+        self.delete_button = QPushButton("حذف")
+        self.delete_button.clicked.connect(self.delete_product)
+        self.delete_button.setStyleSheet(
+            "background: #b42323; color: white;"
+        )
+
+        toolbar.addWidget(self.add_button)
+        toolbar.addWidget(self.edit_button)
+        toolbar.addWidget(self.delete_button)
+        toolbar.addStretch()
+
+        main.addLayout(toolbar)
+
+        filters = QHBoxLayout()
+
+        self.category_filter = QComboBox()
+        self.category_filter.addItem("كل التصنيفات")
+        self.category_filter.currentTextChanged.connect(
+            self.filter_products
+        )
+
+        self.search = QLineEdit()
+        self.search.setPlaceholderText(
+            "بحث بالكود أو اسم الصنف..."
+        )
+        self.search.textChanged.connect(
+            self.filter_products
+        )
+
+        filters.addWidget(self.category_filter)
+        filters.addWidget(self.search, 1)
+
+        main.addLayout(filters)
+
+        self.table = QTableWidget()
+        self.table.setColumnCount(7)
+        self.table.setHorizontalHeaderLabels([
+            "الكود", "الصنف", "التصنيف",
+            "الكمية", "الحد الأدنى",
+            "التكلفة", "سعر البيع"
+        ])
+
+        self.table.setLayoutDirection(Qt.RightToLeft)
+        self.table.setAlternatingRowColors(True)
+        self.table.setSelectionBehavior(
+            QAbstractItemView.SelectRows
+        )
+        self.table.setSelectionMode(
+            QAbstractItemView.SingleSelection
+        )
+        self.table.setEditTriggers(
+            QAbstractItemView.NoEditTriggers
+        )
+        self.table.horizontalHeader().setSectionResizeMode(
+            QHeaderView.Stretch
+        )
+        self.table.verticalHeader().setVisible(False)
+        self.table.cellDoubleClicked.connect(
+            lambda row, col: self.edit_product()
+        )
+
+        main.addWidget(self.table)
+
+        self.status = QLabel()
+        main.addWidget(self.status)
+
+    def load_products(self):
+        self.products = self.db.get_products()
+
+        current_category = self.category_filter.currentText()
+
+        categories = sorted({
+            product[3] for product in self.products
+        })
+
+        self.category_filter.blockSignals(True)
+        self.category_filter.clear()
+        self.category_filter.addItem("كل التصنيفات")
+        self.category_filter.addItems(categories)
+
+        index = self.category_filter.findText(
+            current_category
+        )
+        if index >= 0:
+            self.category_filter.setCurrentIndex(index)
+
+        self.category_filter.blockSignals(False)
+        self.filter_products()
+
+    def filter_products(self):
+        search_text = self.search.text().strip().lower()
+        category = self.category_filter.currentText()
+
+        filtered = []
+
+        for product in self.products:
+            matches_search = (
+                search_text in product[1].lower()
+                or search_text in product[2].lower()
+            )
+
+            matches_category = (
+                category == "كل التصنيفات"
+                or product[3] == category
+            )
+
+            if matches_search and matches_category:
+                filtered.append(product)
+
+        self.table.setRowCount(len(filtered))
+        self.visible_products = filtered
+
+        for row, product in enumerate(filtered):
+            values = [
+                product[1],
+                product[2],
+                product[3],
+                str(product[4]),
+                str(product[5]),
+                f"{product[6]:.2f} ج.م",
+                f"{product[7]:.2f} ج.م"
+            ]
+
+            for col, value in enumerate(values):
+                item = QTableWidgetItem(value)
+                item.setTextAlignment(Qt.AlignCenter)
+
+                if col == 3:
+                    if product[4] <= product[5]:
+                        item.setForeground(
+                            Qt.GlobalColor.red
+                        )
+                    else:
+                        item.setForeground(
+                            Qt.GlobalColor.green
+                        )
+
+                self.table.setItem(row, col, item)
+
+        self.status.setText(
+            f"إجمالي الأصناف المعروضة: {len(filtered)}"
+        )
+
+    def selected_product(self):
+        row = self.table.currentRow()
+
+        if row < 0 or row >= len(self.visible_products):
+            QMessageBox.warning(
+                self, "تنبيه", "اختار صنف الأول"
+            )
+            return None
+
+        return self.visible_products[row]
+
+    def add_product(self):
+        dialog = ProductDialog(self)
+
+        if dialog.exec() == QDialog.Accepted:
+            try:
+                self.db.add_product(dialog.values())
+                self.load_products()
+                QMessageBox.information(
+                    self, "تم", "تمت إضافة الصنف بنجاح"
+                )
+            except sqlite3.IntegrityError:
+                QMessageBox.warning(
+                    self, "خطأ", "كود الصنف موجود بالفعل"
+                )
+
+    def edit_product(self):
+        product = self.selected_product()
+        if not product:
+            return
+
+        dialog = ProductDialog(self, product)
+
+        if dialog.exec() == QDialog.Accepted:
+            try:
+                self.db.update_product(
+                    product[0], dialog.values()
+                )
+                self.load_products()
+                QMessageBox.information(
+                    self, "تم", "تم تعديل الصنف"
+                )
+            except sqlite3.IntegrityError:
+                QMessageBox.warning(
+                    self, "خطأ", "كود الصنف موجود بالفعل"
+                )
+
+    def delete_product(self):
+        product = self.selected_product()
+        if not product:
+            return
+
+        answer = QMessageBox.question(
+            self,
+            "تأكيد الحذف",
+            f"هل تريد حذف {product[2]}؟",
+            QMessageBox.Yes | QMessageBox.No
+        )
+
+        if answer == QMessageBox.Yes:
+            self.db.delete_product(product[0])
+            self.load_products()
+
+
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    window = InventoryPage()
+    window.show()
+    sys.exit(app.exec())
