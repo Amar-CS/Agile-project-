@@ -1,5 +1,6 @@
 🚜 Loader Store - Management System
-<img width="1084" height="650" alt="image" src="https://github.com/user-attachments/assets/e8fc82f7-a347-4f05-be32-3e3bb79412ce" />
+<img width="1672" height="941" alt="image" src="https://github.com/user-attachments/assets/07e6f0e7-4e7f-45b5-aec7-3413454ad863" />
+
 
 A Comprehensive Inventory & Point of Sale (POS) System for Loader Spare Parts
 
