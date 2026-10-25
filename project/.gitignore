@@ -1,0 +1,16 @@
+# local data - never commit the database or browser profile
+data/
+*.db
+*.log
+# python
+__pycache__/
+*.pyc
+.venv/
+# build output
+build/
+dist/
+*.spec
+# OS / editors
+.DS_Store
+Thumbs.db
+.vscode/
