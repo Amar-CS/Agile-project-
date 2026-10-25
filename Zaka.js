@@ -1,0 +1,3 @@
+function zk(){
+    return`<h2 style="font-size:22px">الزكاة</h2><div class="card" style="max-width:460px;display:grid;gap:10px"><label>قيمة المخزون<input id="z1" type="number" value="${P.reduce((a,p)=>a+p.q*p.cost,0)}"></label><label>النقدية<input id="z2" type="number" value="40000"></label><label>الديون المستحقة عليك<input id="z3" type="number" value="0"></label><button class="btn" onclick="const v=(+z1.value+ +z2.value- +z3.value);zr.textContent='الزكاة المستحقة: '+fm(Math.max(0,v*.025))">احسب الزكاة (2.5%)</button><b id="zr" style="font-size:20px;color:var(--y)"></b></div>`
+}
