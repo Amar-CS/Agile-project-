@@ -1,0 +1,167 @@
+function crud() {
+    const c = D[cur];
+
+    // Prepare the records to display
+    let r = c.d.map((x, i) => [x, i]);
+
+    // Filter records by search text
+    if (q) {
+        r = r.filter(([x]) =>
+            JSON.stringify(x).includes(q)
+        );
+    }
+
+    // Filter products by selected category
+    if (cur === 'inv' && cat) {
+        r = r.filter(([x]) => x.c === cat);
+    }
+
+    // Get unique categories from inventory products
+    const cats = cur === 'inv'
+        ? [...new Set(P.map(p => p.c).filter(Boolean))]
+        : [];
+
+    return `
+        <div class="row">
+            <h2 style="font-size:22px">${c.t}</h2>
+
+            <span>
+                ${cur === 'inv'
+                    ? '<button class="btn g" onclick="imgSearch()">📷 بحث بالصورة</button> '
+                    : ''
+                }
+
+                <button class="btn" onclick="openM(-1)">
+                    + ${c.add}
+                </button>
+            </span>
+        </div>
+
+        <div class="card">
+            <div class="row noprint">
+                ${c.s ? `
+                    <input
+                        placeholder="بحث..."
+                        value="${q}"
+                        oninput="q=this.value;keep()"
+                        id="sq"
+                        style="flex:1"
+                    >
+                ` : ''}
+
+                ${cats.length ? `
+                    <select
+                        onchange="cat=this.value;draw()"
+                        aria-label="Filter products by category"
+                    >
+                        <option value="">كل التصنيفات</option>
+
+                        ${cats.map(x => `
+                            <option
+                                value="${x}"
+                                ${x === cat ? 'selected' : ''}
+                            >${x}</option>
+                        `).join('')}
+                    </select>
+                ` : ''}
+            </div>
+
+            <div class="tw">
+                <table>
+                    <tr>
+                        ${c.cols.map(x => `<th>${x[1]}</th>`).join('')}
+                        <th></th>
+                    </tr>
+
+                    ${r.map(([x, i]) => `
+                        <tr>
+                            ${c.cols.map(k => {
+                                let v = x[k[0]];
+
+                                if (k[0] === 'q') {
+                                    return `
+                                        <td>
+                                            <span class="bd ${x.q <= x.min ? 'r' : 'o'}">
+                                                ${v}
+                                            </span>
+                                        </td>
+                                    `;
+                                }
+
+                                if (['cost', 'price', 'bal', 'amt', 'total'].includes(k[0])) {
+                                    v = fm(v);
+                                }
+
+                                return `<td>${v ?? ''}</td>`;
+                            }).join('')}
+
+                            <td>
+                                <button class="lk" onclick="openM(${i})">
+                                    تعديل
+                                </button>
+
+                                <button
+                                    class="lk"
+                                    style="color:var(--red)"
+                                    onclick="del(${i})"
+                                >
+                                    حذف
+                                </button>
+                            </td>
+                        </tr>
+                    `).join('') || `
+                        <tr>
+                            <td colspan="9" class="empty">
+                                لا توجد نتائج. جرّب بحثًا آخر أو أضف عنصرًا جديدًا.
+                            </td>
+                        </tr>
+                    `}
+                </table>
+            </div>
+        </div>
+    `;
+}
+
+
+
+let P = [
+    {
+        code: 'FL-1001',
+        n: 'فلتر زيت المحرك',
+        c: 'فلاتر',
+        q: 12,
+        min: 5,
+        cost: 300,
+        price: 450
+    },
+    {
+        code: 'HY-2002',
+        n: 'سلك هيدروليك',
+        c: 'هيدروليك',
+        q: 5,
+        min: 5,
+        cost: 220,
+        price: 320
+    },
+    {
+        code: 'TR-3003',
+        n: 'تيل فرامل',
+        c: 'فرامل',
+        q: 9,
+        min: 10,
+        cost: 520,
+        price: 680
+    }
+];
+
+
+ENT = {
+    'products': [
+        'code', 'n', 'c', 'q', 'min', 'cost', 'price'
+    ],
+    'suppliers': ['name', 'phone', 'addr', 'note'],
+    'customers': ['name', 'phone', 'bal'],
+    'purchases': ['no', 'sup', 'date', 'total', 'st'],
+    'payments': ['no', 'party', 'type', 'amt', 'date'],
+    'expenses': ['item', 'cat', 'amt', 'date']
+}
