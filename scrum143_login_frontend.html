@@ -1,0 +1,117 @@
+<!-- SCRUM-143: شاشة تسجيل الدخول (Login Frontend: Design + Logic) -->
+<!-- مستخرج من ملف index.html -->
+
+<style>
+/* ==========================================
+   1. التصميم (CSS Design)
+   ========================================== */
+#auth { position:fixed; inset:0; z-index:20; display:flex; background:#F5F5F5; font-family: Tahoma, sans-serif; direction: rtl; }
+.ap { flex:1; background:linear-gradient(150deg,#232323 45%,#8a5a1c); color:#fff; display:flex; flex-direction:column; justify-content:center; align-items:center; padding:30px; text-align:center }
+.af { flex:1; display:grid; place-items:center; padding:20px; overflow:auto }
+.af form { width:100%; max-width:400px; display:grid; gap:12px; background: #fff; padding: 30px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+.af label { display:grid; gap:4px; font-size:13px; color:#777; font-weight: bold;}
+.af input { width:100%; padding:10px 12px; border:1px solid #e8e2d4; border-radius:8px; font-family: inherit; box-sizing: border-box; }
+.btn { background:#F4B000; color:#2C2C2C; border:0; border-radius:8px; padding:12px; font-weight:700; cursor:pointer; font-family: inherit; font-size: 16px; margin-top: 10px; }
+.tabs { display:flex; background:#F5F5F5; border:1px solid #e8e2d4; border-radius:10px; padding:4px; margin-bottom: 15px; }
+.tabs button { flex:1; border:0; background:none; font-weight:700; padding:9px; border-radius:7px; cursor:pointer; color:#777; font-family: inherit; }
+.tabs button.on { background:#F4B000; color:#2C2C2C }
+.ae { border-radius:8px; padding:9px 12px; font-size:13px; display:none }
+.ae.e { display:block; background:#fde4e4; color:#d93a3a }
+</style>
+
+<!-- ==========================================
+   2. هيكل الواجهة (HTML Layout)
+   ========================================== -->
+<div id="auth">
+    <div class="ap">
+        <h1 style="color: #F4B000; margin-bottom: 5px;">LOADER STORE</h1>
+        <p style="color: #E6C27A; border-top: 2px solid #F4B000; padding-top: 10px;">إدارة متكاملة لقطع غيار اللودر</p>
+    </div>
+    <div class="af">
+        <!-- الفورم الأساسي الذي سيتم تعبئته بواسطة الجافاسكريبت -->
+        <form id="aform" novalidate></form>
+    </div>
+</div>
+
+<script>
+// ==========================================
+// 3. المنطق البرمجي (JavaScript Logic)
+// ==========================================
+let lr = 0; // 0 للمدير، 1 للموظف
+
+// تغيير نوع الدخول (مدير/موظف)
+function rl(i) {
+    lr = i;
+    document.querySelectorAll('#rt button').forEach((b, k) => b.classList.toggle('on', k == i));
+}
+
+// دالة رسم فورم تسجيل الدخول
+function renderLogin() {
+    const f = document.querySelector('#aform');
+    f.innerHTML = `
+        <h2 style="font-size:24px; margin:0 0 15px; text-align: center; color: #2C2C2C;">أهلًا بعودتك</h2>
+        <div class="tabs" id="rt">
+            <button type="button" class="on" onclick="rl(0)">مدير</button>
+            <button type="button" onclick="rl(1)">موظف</button>
+        </div>
+        <div class="ae" id="ae"></div>
+        <label>البريد الإلكتروني
+            <input id="a1" type="email" placeholder="admin@loader.com">
+        </label>
+        <label>كلمة المرور
+            <input id="a2" type="password">
+        </label>
+        <div style="display:flex; align-items:center; gap:5px; margin-top:5px; color:#777; font-size: 14px;">
+            <input type="checkbox" id="rm" style="width: auto;">
+            <label for="rm" style="display:inline; margin:0; font-weight:normal;">تذكرني</label>
+        </div>
+        <button type="submit" class="btn">دخول</button>
+    `;
+}
+
+renderLogin(); // استدعاء الدالة لرسم الشاشة عند تحميل الصفحة
+
+// إظهار رسائل الخطأ
+function msg(text, type) {
+    const el = document.querySelector('#ae');
+    el.textContent = text;
+    el.className = 'ae ' + type;
+}
+
+// إرسال البيانات للـ API عند الضغط على "دخول"
+document.querySelector('#aform').onsubmit = async e => {
+    e.preventDefault(); // منع إعادة تحميل الصفحة
+    const em = document.querySelector('#a1').value.trim().toLowerCase();
+    const pass = document.querySelector('#a2').value;
+    
+    // 1. التحقق من صحة صيغة البريد الإلكتروني
+    if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)) {
+        return msg('اكتب بريدًا إلكترونيًا صحيحًا', 'e');
+    }
+    
+    const b = document.querySelector('#aform .btn');
+    b.disabled = true; 
+    b.textContent = 'جاري الدخول...';
+    
+    try {
+        // 2. إرسال البيانات للسيرفر
+        // هذا مجرد تعليق توضيحي لكيفية عمل الـ API:
+        // const response = await api('POST', '/login', { email: em, pass: pass, role: lr ? 'employee' : 'manager' });
+        // await startApp(response);
+        
+        console.log("تم الإرسال للسيرفر بالبيانات التالية:", { email: em, pass: pass, role: lr ? 'employee' : 'manager' });
+        
+        // محاكاة تأخير السيرفر للتوضيح
+        setTimeout(() => {
+            b.disabled = false; 
+            b.textContent = 'دخول';
+            msg('هذا الكود مفصول للتوضيح، راجع السيرفر للتحقق.', 'e');
+        }, 1000);
+        
+    } catch(er) {
+        b.disabled = false; 
+        b.textContent = 'دخول';
+        msg(er.message || 'حدث خطأ في الاتصال', 'e');
+    }
+};
+</script>

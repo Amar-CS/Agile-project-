@@ -1,0 +1,123 @@
+<!-- SCRUM-142: شاشة إنشاء حساب جديد (Registration Frontend: Design + Logic) -->
+<!-- مستخرج من ملف index.html -->
+
+<style>
+/* ==========================================
+   1. التصميم (CSS Design)
+   ========================================== */
+#auth { position:fixed; inset:0; z-index:20; display:flex; background:#F5F5F5; font-family: Tahoma, sans-serif; direction: rtl; }
+.ap { flex:1; background:linear-gradient(150deg,#232323 45%,#8a5a1c); color:#fff; display:flex; flex-direction:column; justify-content:center; align-items:center; padding:30px; text-align:center }
+.af { flex:1; display:grid; place-items:center; padding:20px; overflow:auto }
+.af form { width:100%; max-width:400px; display:grid; gap:12px; background: #fff; padding: 30px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+.af label { display:grid; gap:4px; font-size:13px; color:#777; font-weight: bold;}
+.af input, .af select { width:100%; padding:10px 12px; border:1px solid #e8e2d4; border-radius:8px; font-family: inherit; box-sizing: border-box; }
+.btn { background:#F4B000; color:#2C2C2C; border:0; border-radius:8px; padding:12px; font-weight:700; cursor:pointer; font-family: inherit; font-size: 16px; margin-top: 10px; }
+.tabs { display:flex; background:#F5F5F5; border:1px solid #e8e2d4; border-radius:10px; padding:4px; margin-bottom: 15px; }
+.tabs button { flex:1; border:0; background:none; font-weight:700; padding:9px; border-radius:7px; cursor:pointer; color:#777; font-family: inherit; }
+.tabs button.on { background:#F4B000; color:#2C2C2C }
+.ae { border-radius:8px; padding:9px 12px; font-size:13px; display:none }
+.ae.e { display:block; background:#fde4e4; color:#d93a3a }
+.chk { display:flex !important; flex-direction:row; align-items:center; gap:8px; }
+.hint { font-size:12px; color:#777; text-align:center }
+</style>
+
+<!-- ==========================================
+   2. هيكل الواجهة (HTML Layout)
+   ========================================== -->
+<div id="auth">
+    <div class="ap">
+        <h1 style="color: #F4B000; margin-bottom: 5px;">LOADER STORE</h1>
+        <p style="color: #E6C27A; border-top: 2px solid #F4B000; padding-top: 10px;">إدارة متكاملة لقطع غيار اللودر</p>
+    </div>
+    <div class="af">
+        <form id="aform" novalidate></form>
+    </div>
+</div>
+
+<script>
+// ==========================================
+// 3. المنطق البرمجي (JavaScript Logic)
+// ==========================================
+
+// دالة رسم فورم إنشاء الحساب
+function renderRegister() {
+    const f = document.querySelector('#aform');
+    f.innerHTML = `
+        <div class="tabs">
+            <button type="button" onclick="alert('شاشة الدخول مفصولة في الملف الخاص بها')">تسجيل الدخول</button>
+            <button type="button" class="on">إنشاء حساب</button>
+        </div>
+        <h2 style="font-size:24px; margin:0 0 15px; text-align: center; color: #2C2C2C;">إنشاء حساب جديد</h2>
+        <div class="ae" id="ae"></div>
+        
+        <label>الاسم الكامل<input id="a0"></label>
+        <label>البريد الإلكتروني<input id="a1" type="email"></label>
+        <label>رقم الهاتف<input id="a3" type="tel"></label>
+        <label>الدور
+            <select id="a4">
+                <option>موظف مبيعات</option>
+                <option>أمين مخزن</option>
+                <option>محاسب</option>
+            </select>
+        </label>
+        <label>كلمة المرور (6 أحرف على الأقل)<input id="a2" type="password"></label>
+        <div id="sm" class="hint" style="text-align:right"></div>
+        <label>تأكيد كلمة المرور<input id="a5" type="password"></label>
+        
+        <label class="chk" style="margin-top: 10px;">
+            <input type="checkbox" id="tc" style="width: auto;">
+            <span style="font-weight: normal;">أوافق على شروط الاستخدام</span>
+        </label>
+        <button type="submit" class="btn">إنشاء الحساب</button>
+    `;
+
+    // حساب وعرض قوة كلمة المرور أثناء الكتابة
+    document.querySelector('#a2').oninput = e => {
+        const x = e.target.value;
+        const s = (x.length >= 6) + /\d/.test(x) + (/[A-Za-z]/.test(x) && x.length >= 8);
+        document.querySelector('#sm').textContent = x ? 'قوة كلمة المرور: ' + ['ضعيفة', 'ضعيفة', 'متوسطة', 'قوية'][s] : '';
+    };
+}
+
+renderRegister(); // تشغيل الدالة لرسم الشاشة
+
+// إظهار رسائل الخطأ
+function msg(text, type) {
+    const el = document.querySelector('#ae');
+    el.textContent = text;
+    el.className = 'ae ' + type;
+}
+
+// إرسال البيانات والتحقق (Validation)
+document.querySelector('#aform').onsubmit = async e => {
+    e.preventDefault();
+    
+    const v = id => (document.querySelector('#'+id)?.value || '').trim();
+    const em = v('a1').toLowerCase();
+    
+    // 1. التحقق من البيانات (Client-side Validation) قبل الإرسال للسيرفر
+    if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)) return msg('اكتب بريدًا إلكترونيًا صحيحًا', 'e');
+    if(v('a0').length < 3) return msg('اكتب اسمك الكامل', 'e');
+    if(document.querySelector('#a2').value.length < 6) return msg('كلمة المرور يجب ألا تقل عن 6 أحرف', 'e');
+    if(document.querySelector('#a2').value !== document.querySelector('#a5').value) return msg('كلمتا المرور غير متطابقتين', 'e');
+    if(!document.querySelector('#tc').checked) return msg('وافق على شروط الاستخدام للمتابعة', 'e');
+    
+    try {
+        // 2. إرسال البيانات (محاكاة استدعاء الـ API)
+        // await api('POST', '/register', { name: v('a0'), email: em, phone: v('a3'), pass: document.querySelector('#a2').value, role: document.querySelector('#a4').value });
+        console.log("تم الإرسال:", { name: v('a0'), email: em, phone: v('a3'), role: document.querySelector('#a4').value });
+        
+        // 3. تغيير الشاشة لإظهار رسالة النجاح (حالة pending)
+        document.querySelector('#aform').innerHTML = `
+            <div style="text-align:center;display:grid;gap:12px">
+                <div style="font-size:54px">✅</div>
+                <h2 style="font-size:24px;margin:0">تم استلام طلبك</h2>
+                <div class="hint">سيراجع المدير طلبك ويفعّل حسابك قريبًا.</div>
+                <button type="button" class="btn" onclick="alert('شاشة الدخول مفصولة هنا')">العودة لتسجيل الدخول</button>
+            </div>
+        `;
+    } catch(er) {
+        msg(er.message, 'e');
+    }
+};
+</script>
